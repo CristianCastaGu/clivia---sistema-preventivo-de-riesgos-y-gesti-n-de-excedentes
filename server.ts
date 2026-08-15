@@ -159,6 +159,134 @@ Devuelve un análisis estructurado en formato JSON con las claves:
     }
   });
 
+  // Live weather — queries every configured provider in parallel and returns
+  // both the per-source readings (for a transparent "comparación de APIs")
+  // and a simple consensus (average across whichever sources responded).
+  app.get("/api/weather/live", async (req, res) => {
+    const lat = Number(req.query.lat) || Number(process.env.MUNICIPALITY_REF_LAT) || 4.9653;
+    const lon = Number(req.query.lon) || Number(process.env.MUNICIPALITY_REF_LON) || -73.9144;
+
+    type SourceReading = {
+      ok: boolean;
+      temperatureC?: number;
+      humidityPercent?: number;
+      windSpeedKmh?: number;
+      precipitationMm?: number;
+      conditionText?: string;
+      error?: string;
+    };
+
+    const fetchOpenMeteo = async (): Promise<SourceReading> => {
+      try {
+        const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,precipitation,wind_speed_10m,weather_code&timezone=auto`;
+        const r = await fetch(url);
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        const d: any = await r.json();
+        return {
+          ok: true,
+          temperatureC: d.current?.temperature_2m,
+          humidityPercent: d.current?.relative_humidity_2m,
+          windSpeedKmh: d.current?.wind_speed_10m,
+          precipitationMm: d.current?.precipitation,
+        };
+      } catch (e: any) {
+        return { ok: false, error: e.message };
+      }
+    };
+
+    const fetchOpenWeather = async (): Promise<SourceReading> => {
+      const key = process.env.OPENWEATHER_API_KEY;
+      if (!key) return { ok: false, error: "sin OPENWEATHER_API_KEY" };
+      try {
+        const url = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${key}&units=metric&lang=es`;
+        const r = await fetch(url);
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        const d: any = await r.json();
+        return {
+          ok: true,
+          temperatureC: d.main?.temp,
+          humidityPercent: d.main?.humidity,
+          windSpeedKmh: typeof d.wind?.speed === "number" ? d.wind.speed * 3.6 : undefined,
+          precipitationMm: d.rain?.["1h"] ?? 0,
+          conditionText: d.weather?.[0]?.description,
+        };
+      } catch (e: any) {
+        return { ok: false, error: e.message };
+      }
+    };
+
+    const fetchWeatherApi = async (): Promise<SourceReading> => {
+      const key = process.env.WEATHERAPI_KEY;
+      if (!key) return { ok: false, error: "sin WEATHERAPI_KEY" };
+      try {
+        const url = `https://api.weatherapi.com/v1/current.json?key=${key}&q=${lat},${lon}&lang=es`;
+        const r = await fetch(url);
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        const d: any = await r.json();
+        return {
+          ok: true,
+          temperatureC: d.current?.temp_c,
+          humidityPercent: d.current?.humidity,
+          windSpeedKmh: d.current?.wind_kph,
+          precipitationMm: d.current?.precip_mm,
+          conditionText: d.current?.condition?.text,
+        };
+      } catch (e: any) {
+        return { ok: false, error: e.message };
+      }
+    };
+
+    const fetchMeteoblue = async (): Promise<SourceReading> => {
+      const key = process.env.METEOBLUE_API_KEY;
+      if (!key) return { ok: false, error: "sin METEOBLUE_API_KEY" };
+      try {
+        const url = `https://my.meteoblue.com/packages/basic-1h?lat=${lat}&lon=${lon}&apikey=${key}&format=json`;
+        const r = await fetch(url);
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        const d: any = await r.json();
+        const h = d.data_1h;
+        return {
+          ok: true,
+          temperatureC: h?.temperature?.[0],
+          windSpeedKmh: typeof h?.windspeed?.[0] === "number" ? h.windspeed[0] * 3.6 : undefined,
+          precipitationMm: h?.precipitation?.[0],
+        };
+      } catch (e: any) {
+        return { ok: false, error: e.message };
+      }
+    };
+
+    const [openMeteo, openWeather, weatherApi, meteoblue] = await Promise.all([
+      fetchOpenMeteo(),
+      fetchOpenWeather(),
+      fetchWeatherApi(),
+      fetchMeteoblue(),
+    ]);
+
+    const sources = { openMeteo, openWeather, weatherApi, meteoblue };
+    const ok = Object.values(sources).filter((s) => s.ok);
+
+    const avg = (key: keyof SourceReading) => {
+      const values = ok.map((s) => s[key]).filter((v): v is number => typeof v === "number");
+      if (!values.length) return null;
+      return Number((values.reduce((a, b) => a + b, 0) / values.length).toFixed(1));
+    };
+
+    res.json({
+      referencePoint: { lat, lon },
+      fetchedAt: new Date().toISOString(),
+      sourcesOnline: ok.length,
+      sourcesTotal: Object.keys(sources).length,
+      consensus: {
+        temperatureC: avg("temperatureC"),
+        humidityPercent: avg("humidityPercent"),
+        windSpeedKmh: avg("windSpeedKmh"),
+        precipitationMm: avg("precipitationMm"),
+      },
+      sources,
+    });
+  });
+
   // Surplus matching endpoint — implements the reasoning core of the surplus engine:
   // does the alert really force an early harvest, and if so, who should receive it.
   app.post("/api/gemini/surplus-match", async (req, res) => {

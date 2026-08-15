@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   ShieldAlert,
   AlertTriangle,
@@ -15,6 +15,9 @@ import {
   MapPin,
   Clock,
   Sparkles,
+  Wind,
+  Droplets,
+  Satellite,
 } from "lucide-react";
 import { WeatherAlert, CropPlot, CitizenIncident, SurplusTransaction, UserRole, AlertSeverity, ThreatType } from "../types";
 
@@ -34,6 +37,99 @@ const roleHeadline: Record<UserRole, string> = {
   ciudadano: "Centro comunitario de alerta temprana",
   autoridad: "Sala de mando y despacho operativo",
   ong_banco: "Centro de excedentes disponibles",
+};
+
+interface LiveWeather {
+  referencePoint: { lat: number; lon: number };
+  fetchedAt: string;
+  sourcesOnline: number;
+  sourcesTotal: number;
+  consensus: { temperatureC: number | null; humidityPercent: number | null; windSpeedKmh: number | null; precipitationMm: number | null };
+  sources: Record<string, { ok: boolean; temperatureC?: number; conditionText?: string }>;
+}
+
+const sourceLabels: Record<string, string> = {
+  openMeteo: "Open-Meteo",
+  openWeather: "OpenWeatherMap",
+  weatherApi: "WeatherAPI",
+  meteoblue: "Meteoblue",
+};
+
+const LiveWeatherCard: React.FC = () => {
+  const [weather, setWeather] = useState<LiveWeather | null>(null);
+  const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
+
+  useEffect(() => {
+    fetch("/api/weather/live")
+      .then((r) => r.json())
+      .then((d) => {
+        setWeather(d);
+        setStatus("ready");
+      })
+      .catch(() => setStatus("error"));
+  }, []);
+
+  if (status === "error") return null;
+
+  return (
+    <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-5">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-sm font-bold text-on-surface flex items-center gap-2">
+          <Satellite className="w-4 h-4 text-primary" />
+          Clima en tiempo real — Tocancipá
+        </h3>
+        {weather && (
+          <span className="text-[10px] font-semibold text-on-surface-variant bg-surface-container-low px-2 py-1 rounded-full">
+            {weather.sourcesOnline}/{weather.sourcesTotal} fuentes en línea
+          </span>
+        )}
+      </div>
+
+      {status === "loading" && <p className="text-xs text-on-surface-variant">Consultando fuentes meteorológicas…</p>}
+
+      {weather && (
+        <div className="space-y-3">
+          <div className="grid grid-cols-3 gap-3">
+            <div className="flex items-center gap-2">
+              <ThermometerSnowflake className="w-4 h-4 text-sky-600 shrink-0" />
+              <div>
+                <span className="text-lg font-black text-on-surface">{weather.consensus.temperatureC ?? "—"}°C</span>
+                <p className="text-[10px] text-on-surface-variant">Temperatura</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Droplets className="w-4 h-4 text-sky-700 shrink-0" />
+              <div>
+                <span className="text-lg font-black text-on-surface">{weather.consensus.humidityPercent ?? "—"}%</span>
+                <p className="text-[10px] text-on-surface-variant">Humedad</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Wind className="w-4 h-4 text-on-surface-variant shrink-0" />
+              <div>
+                <span className="text-lg font-black text-on-surface">{weather.consensus.windSpeedKmh ?? "—"}</span>
+                <p className="text-[10px] text-on-surface-variant">km/h viento</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-1.5 pt-2 border-t border-outline-variant">
+            {Object.entries(weather.sources).map(([key, s]: [string, LiveWeather["sources"][string]]) => (
+              <span
+                key={key}
+                className={`text-[10px] font-semibold px-2 py-1 rounded-full ${
+                  s.ok ? "bg-primary-fixed text-on-primary-fixed" : "bg-surface-container-high text-on-surface-variant opacity-60"
+                }`}
+                title={s.ok ? `${sourceLabels[key]}: ${s.temperatureC ?? "—"}°C` : `${sourceLabels[key]}: sin datos`}
+              >
+                {sourceLabels[key]} {s.ok ? `· ${s.temperatureC ?? "—"}°C` : "· offline"}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 };
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
@@ -103,6 +199,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
         </div>
       </div>
+
+      <LiveWeatherCard />
 
       {/* KPI cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
