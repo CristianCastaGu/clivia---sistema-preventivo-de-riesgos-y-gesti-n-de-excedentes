@@ -1,25 +1,20 @@
 import React, { useState, useEffect } from "react";
-import { 
-  Sprout, 
-  Plus, 
-  AlertTriangle, 
-  Truck, 
-  Building2, 
-  Sparkles, 
-  CheckCircle2, 
-  Clock, 
-  ArrowRight, 
-  FileText, 
-  QrCode, 
-  TrendingUp, 
-  Heart,
-  Droplets,
-  Calendar,
+import {
+  Sprout,
+  Plus,
+  Truck,
+  Sparkles,
+  FileText,
+  QrCode,
+  TrendingUp,
+  Camera,
+  MessageSquareText,
   X,
-  ThermometerSnowflake,
-  ShieldCheck
+  CheckCircle2,
 } from "lucide-react";
-import { CropPlot, FoodBankCenter, SurplusTransaction, ThreatType } from "../types";
+import { CropPlot, FoodBankCenter, SurplusTransaction, ThreatType, SurplusMatchOption, SurplusMatchResult } from "../types";
+import { SurplusMatchPanel } from "./SurplusMatchPanel";
+import { CropPhotoAnalysisView } from "./CropPhotoAnalysisView";
 
 interface CultivationModuleProps {
   plots: CropPlot[];
@@ -30,6 +25,8 @@ interface CultivationModuleProps {
   preselectedPlot?: CropPlot | null;
 }
 
+type ModuleTab = "motor" | "foto" | "simulador";
+
 export const CultivationModule: React.FC<CultivationModuleProps> = ({
   plots,
   setPlots,
@@ -38,28 +35,19 @@ export const CultivationModule: React.FC<CultivationModuleProps> = ({
   setTransactions,
   preselectedPlot,
 }) => {
-  // Active selected plot for surplus engine
-  const [selectedPlot, setSelectedPlot] = useState<CropPlot>(
-    preselectedPlot || plots[0]
-  );
+  const [selectedPlot, setSelectedPlot] = useState<CropPlot>(preselectedPlot || plots[0]);
+  const [activeTab, setActiveTab] = useState<ModuleTab>("motor");
 
-  // When preselectedPlot changes from other components
   useEffect(() => {
-    if (preselectedPlot) {
-      setSelectedPlot(preselectedPlot);
-    }
+    if (preselectedPlot) setSelectedPlot(preselectedPlot);
   }, [preselectedPlot]);
 
-  // Surplus Simulation State
+  // --- Manual "simulador de impacto" state (kept for CO2/meals estimation) ---
   const [threatInput, setThreatInput] = useState<ThreatType>("helada");
-  const [urgencyDays, setUrgencyDays] = useState<number>(2);
   const [rescuePercentage, setRescuePercentage] = useState<number>(85);
   const [selectedFoodBankId, setSelectedFoodBankId] = useState<string>(foodBanks[0]?.id || "");
-  const [isAnalyzingAI, setIsAnalyzingAI] = useState<boolean>(false);
-  const [aiRiskAnalysis, setAiRiskAnalysis] = useState<any | null>(null);
   const [generatedVoucher, setGeneratedVoucher] = useState<SurplusTransaction | null>(null);
 
-  // New plot modal
   const [showNewPlotModal, setShowNewPlotModal] = useState(false);
   const [newPlotForm, setNewPlotForm] = useState({
     name: "",
@@ -71,43 +59,14 @@ export const CultivationModule: React.FC<CultivationModuleProps> = ({
     plantingDate: "2025-05-01",
     estimatedHarvestDate: "2025-10-30",
     phenologicalStage: "madurez_cosecha" as const,
-    locationName: "Valle Central, Tlaxcala"
+    locationName: "Valle Central, Tlaxcala",
   });
 
-  // Calculate surplus numbers
   const calculatedRescuedTons = Number(((selectedPlot.estimatedYieldTons * rescuePercentage) / 100).toFixed(1));
-  const mealsGenerated = Math.round(calculatedRescuedTons * 1000 * 2.5); // 2.5 meals per kg
-  const co2SavedKg = Math.round(calculatedRescuedTons * 250); // 250kg CO2 avoided per ton
-  const selectedFoodBank = foodBanks.find(fb => fb.id === selectedFoodBankId) || foodBanks[0];
+  const mealsGenerated = Math.round(calculatedRescuedTons * 1000 * 2.5);
+  const co2SavedKg = Math.round(calculatedRescuedTons * 250);
+  const selectedFoodBank = foodBanks.find((fb) => fb.id === selectedFoodBankId) || foodBanks[0];
 
-  // Trigger AI Risk Analysis
-  const handleAnalyzeWithGemini = async () => {
-    setIsAnalyzingAI(true);
-    setAiRiskAnalysis(null);
-    try {
-      const res = await fetch("/api/gemini/analyze-risk", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          cropType: selectedPlot.cropType,
-          hectares: selectedPlot.hectares,
-          region: selectedPlot.locationName,
-          forecastEvent: `Alerta inminente de ${threatInput} en ${urgencyDays} días`
-        })
-      });
-      const data = await res.json();
-      setAiRiskAnalysis(data);
-      if (data.harvestRescuePotential) {
-        setRescuePercentage(data.harvestRescuePotential);
-      }
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setIsAnalyzingAI(false);
-    }
-  };
-
-  // Submit and finalize Surplus Rescue dispatch
   const handleCreateSurplusDispatch = () => {
     const newTrx: SurplusTransaction = {
       id: `trx-${Date.now().toString().slice(-4)}`,
@@ -121,22 +80,39 @@ export const CultivationModule: React.FC<CultivationModuleProps> = ({
       timestamp: "Hace unos momentos",
       status: "en_camino",
       estimatedCo2SavedKg: co2SavedKg,
-      mealsGenerated: mealsGenerated,
-      taxVoucherCode: `CLIVIA-SAT-${new Date().getFullYear()}-${Math.floor(100000 + Math.random() * 900000)}X`
+      mealsGenerated,
+      taxVoucherCode: `CLIVIA-SAT-${new Date().getFullYear()}-${Math.floor(100000 + Math.random() * 900000)}X`,
     };
-
     setTransactions([newTrx, ...transactions]);
     setGeneratedVoucher(newTrx);
+    setPlots((prev) => prev.map((p) => (p.id === selectedPlot.id ? { ...p, status: "cosecha_anticipada_activa" } : p)));
+  };
 
-    // Update plot status
-    setPlots(prev => prev.map(p => p.id === selectedPlot.id ? { ...p, status: "cosecha_anticipada_activa" } : p));
+  const handleSurplusConfirmed = (option: SurplusMatchOption, result: SurplusMatchResult) => {
+    const newTrx: SurplusTransaction = {
+      id: `trx-${Date.now().toString().slice(-4)}`,
+      plotId: selectedPlot.id,
+      cropName: selectedPlot.cropType,
+      farmerName: selectedPlot.farmerName,
+      rescuedTons: result.estimatedTons,
+      destinationCenterId: option.id,
+      destinationCenterName: option.name,
+      threatTrigger: threatInput,
+      timestamp: "Hace unos momentos",
+      status: "programado",
+      estimatedCo2SavedKg: Math.round(result.estimatedTons * 250),
+      mealsGenerated: Math.round(result.estimatedTons * 1000 * 2.5),
+      taxVoucherCode: `CLIVIA-${new Date().getFullYear()}-${Math.floor(100000 + Math.random() * 900000)}X`,
+    };
+    setTransactions([newTrx, ...transactions]);
+    setPlots((prev) => prev.map((p) => (p.id === selectedPlot.id ? { ...p, status: "cosecha_anticipada_activa" } : p)));
   };
 
   const handleAddNewPlot = (e: React.FormEvent) => {
     e.preventDefault();
     const newPlot: CropPlot = {
       id: `plot-${Date.now()}`,
-      name: newPlotForm.name || "Nueva Parcela Ejidal",
+      name: newPlotForm.name || "Nueva Parcela",
       farmerName: newPlotForm.farmerName,
       cropType: newPlotForm.cropType,
       cropCategory: newPlotForm.cropCategory,
@@ -150,50 +126,46 @@ export const CultivationModule: React.FC<CultivationModuleProps> = ({
       locationName: newPlotForm.locationName,
       coordinates: [19.32, -97.92],
       moistureLevel: 60,
-      status: "alerta_preventiva"
+      status: "alerta_preventiva",
     };
-
     setPlots([newPlot, ...plots]);
     setSelectedPlot(newPlot);
     setShowNewPlotModal(false);
   };
 
+  const tabs: { id: ModuleTab; label: string; icon: React.ElementType }[] = [
+    { id: "motor", label: "Motor de excedentes", icon: Sparkles },
+    { id: "foto", label: "Análisis de foto", icon: Camera },
+    { id: "simulador", label: "Simulador de impacto", icon: TrendingUp },
+  ];
+
   return (
     <div className="space-y-6 pb-12 animate-in fade-in">
-      {/* Title & Actions Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-surface-container-lowest p-5 rounded-xl border border-outline-variant">
         <div>
-          <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-            <Sprout className="w-5 h-5 text-emerald-600" />
-            <span>Módulo Agrícola y Motor de Optimización de Excedentes</span>
+          <h2 className="text-lg font-bold text-on-surface flex items-center gap-2">
+            <Sprout className="w-5 h-5 text-primary" />
+            Cultivos y gestión de excedentes
           </h2>
-          <p className="text-xs text-slate-500">
-            Convierte alertas climáticas en cosechas preventivas y donaciones coordinadas a bancos de alimentos.
+          <p className="text-xs text-on-surface-variant mt-0.5">
+            Convierte alertas climáticas en cosechas preventivas y conexiones de excedente coordinadas.
           </p>
         </div>
-
         <button
           onClick={() => setShowNewPlotModal(true)}
-          className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-sm transition self-start sm:self-auto"
+          className="px-4 py-2.5 bg-primary text-on-primary rounded-full text-xs font-semibold flex items-center gap-1.5 hover:bg-primary-container hover:text-on-primary-container transition self-start sm:self-auto"
         >
           <Plus className="w-4 h-4" />
-          <span>Registrar Parcela</span>
+          Registrar parcela
         </button>
       </div>
 
-      {/* Main Grid: Plots Carousel (Left) & Decision Engine (Right) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left Column: My Plots List (4 cols) */}
+        {/* Plot list */}
         <div className="lg:col-span-4 space-y-4">
-          <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                Parcelas Bajo Monitoreo ({plots.length})
-              </span>
-              <span className="text-[11px] text-emerald-700 font-semibold">Selecciona una</span>
-            </div>
-
-            <div className="space-y-2.5 max-h-[580px] overflow-y-auto pr-1">
+          <div className="bg-surface-container-lowest rounded-xl p-4 border border-outline-variant space-y-3">
+            <span className="text-xs font-bold text-on-surface-variant uppercase tracking-wide">Parcelas bajo monitoreo ({plots.length})</span>
+            <div className="space-y-2.5 max-h-[620px] overflow-y-auto pr-1">
               {plots.map((plot) => {
                 const isSelected = selectedPlot.id === plot.id;
                 return (
@@ -204,34 +176,36 @@ export const CultivationModule: React.FC<CultivationModuleProps> = ({
                       setGeneratedVoucher(null);
                     }}
                     className={`w-full text-left p-3.5 rounded-xl border transition-all ${
-                      isSelected
-                        ? "bg-emerald-50/80 border-emerald-500 ring-2 ring-emerald-500/20 shadow-sm"
-                        : "bg-slate-50 border-slate-200 hover:bg-slate-100/70"
+                      isSelected ? "bg-surface-container-low border-primary ring-1 ring-primary" : "bg-surface border-outline-variant hover:bg-surface-container-low"
                     }`}
                   >
-                    <div className="flex items-start justify-between">
-                      <h4 className="text-xs font-bold text-slate-900">{plot.name}</h4>
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${
-                        plot.riskLevel === "rojo" ? "bg-rose-100 text-rose-800" :
-                        plot.riskLevel === "amarillo" ? "bg-amber-100 text-amber-800" :
-                        "bg-emerald-100 text-emerald-800"
-                      }`}>
+                    <div className="flex items-start justify-between gap-2">
+                      <h4 className="text-xs font-bold text-on-surface">{plot.name}</h4>
+                      <span
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase shrink-0 ${
+                          plot.riskLevel === "rojo"
+                            ? "bg-tertiary-container text-on-tertiary-container"
+                            : plot.riskLevel === "amarillo"
+                            ? "bg-secondary-container text-on-secondary-container"
+                            : "bg-primary-fixed text-on-primary-fixed"
+                        }`}
+                      >
                         {plot.riskLevel}
                       </span>
                     </div>
-
-                    <div className="mt-1 flex items-center gap-2 text-[11px] text-slate-600">
+                    <div className="mt-1 flex items-center gap-2 text-[11px] text-on-surface-variant">
                       <span>🌱 {plot.cropType}</span>
-                      <span>•</span>
+                      <span>·</span>
                       <span>{plot.hectares} ha</span>
-                      <span>•</span>
-                      <span>~{plot.estimatedYieldTons} Ton</span>
+                      <span>·</span>
+                      <span>~{plot.estimatedYieldTons} ton</span>
                     </div>
-
-                    <div className="mt-2 flex items-center justify-between text-[10px] text-slate-500 pt-2 border-t border-slate-200/50">
-                      <span>Etapa: <strong className="text-slate-700">{plot.phenologicalStage.replace("_", " ")}</strong></span>
-                      <span className="font-semibold text-emerald-700">
-                        {plot.status === "cosecha_anticipada_activa" ? "🚜 Rescate Activo" : "Monitoreo"}
+                    <div className="mt-2 flex items-center justify-between text-[10px] text-on-surface-variant pt-2 border-t border-outline-variant">
+                      <span>
+                        Etapa: <strong className="text-on-surface">{plot.phenologicalStage.replace("_", " ")}</strong>
+                      </span>
+                      <span className="font-semibold text-primary">
+                        {plot.status === "cosecha_anticipada_activa" ? "🚜 Rescate activo" : "Monitoreo"}
                       </span>
                     </div>
                   </button>
@@ -241,382 +215,259 @@ export const CultivationModule: React.FC<CultivationModuleProps> = ({
           </div>
         </div>
 
-        {/* Right Column: Surplus Decision & Redistribution Engine (8 cols) */}
-        <div className="lg:col-span-8 space-y-6">
-          {/* Active Plot Header Summary */}
-          <div className="bg-slate-900 text-white rounded-2xl p-5 border border-slate-800 shadow-md">
+        {/* Right: active plot + tabs */}
+        <div className="lg:col-span-8 space-y-4">
+          <div className="bg-primary text-on-primary rounded-xl p-5">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest bg-emerald-950 px-2 py-0.5 rounded border border-emerald-800">
-                  Motor de Excedentes Activo
-                </span>
-                <h3 className="text-lg font-extrabold text-white mt-1">
+                <span className="text-[10px] font-bold uppercase tracking-widest bg-white/10 px-2 py-0.5 rounded-full">Parcela activa</span>
+                <h3 className="text-lg font-bold mt-1">
                   {selectedPlot.name} — {selectedPlot.cropType}
                 </h3>
-                <p className="text-xs text-slate-400">
-                  Productor: {selectedPlot.farmerName} • Ubicación: {selectedPlot.locationName}
+                <p className="text-xs text-on-primary/70">
+                  Productor: {selectedPlot.farmerName} · {selectedPlot.locationName}
                 </p>
               </div>
-
-              <div className="flex items-center gap-3 bg-slate-800/80 px-3.5 py-2 rounded-xl border border-slate-700">
-                <div className="text-right">
-                  <span className="text-[10px] text-slate-400 block">Rendimiento Esperado</span>
-                  <span className="text-base font-black text-emerald-400">{selectedPlot.estimatedYieldTons} Toneladas</span>
-                </div>
+              <div className="text-right bg-white/10 px-3.5 py-2 rounded-xl">
+                <span className="text-[10px] block opacity-70">Rendimiento esperado</span>
+                <span className="text-base font-black">{selectedPlot.estimatedYieldTons} ton</span>
               </div>
             </div>
           </div>
 
-          {/* Decision Simulator Form & Calculations */}
-          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-6">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h4 className="font-bold text-sm text-slate-900 flex items-center gap-2">
-                <TrendingUp className="w-4 h-4 text-emerald-600" />
-                <span>Simulador de Pérdida vs. Cosecha Anticipada Preventiva</span>
-              </h4>
-
-              <button
-                onClick={handleAnalyzeWithGemini}
-                disabled={isAnalyzingAI}
-                className="px-3 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm transition disabled:opacity-50"
-              >
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>{isAnalyzingAI ? "Analizando con Gemini..." : "Optimizar con Gemini AI"}</span>
-              </button>
-            </div>
-
-            {/* AI Risk Insight Callout if present */}
-            {aiRiskAnalysis && (
-              <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-xs space-y-2 animate-in fade-in">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-emerald-900 flex items-center gap-1.5">
-                    <Sparkles className="w-4 h-4 text-emerald-600" />
-                    Diagnóstico Predictivo de Riesgo (Gemini 3.7 Flash)
-                  </span>
-                  <span className="font-mono font-bold text-emerald-800 bg-white px-2 py-0.5 rounded border border-emerald-300">
-                    Nivel: {aiRiskAnalysis.alertLevel || "ROJO"} (Score: {aiRiskAnalysis.riskScore}/100)
-                  </span>
-                </div>
-                <p className="text-slate-700 leading-relaxed">
-                  {aiRiskAnalysis.suggestedSurplusAction || aiRiskAnalysis.economicImpactAssessment}
-                </p>
-                {aiRiskAnalysis.preventiveSteps && (
-                  <div className="pt-2 border-t border-emerald-200">
-                    <strong className="text-emerald-900 block mb-1">Plan de acción recomendado:</strong>
-                    <ul className="list-disc list-inside space-y-0.5 text-slate-600">
-                      {aiRiskAnalysis.preventiveSteps.map((step: string, idx: number) => (
-                        <li key={idx}>{step}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Simulation Variables Sliders and Inputs */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="text-xs font-semibold text-slate-700 block mb-1">
-                  Amenaza Meteorológica
-                </label>
-                <select
-                  value={threatInput}
-                  onChange={(e) => setThreatInput(e.target.value as ThreatType)}
-                  className="w-full text-xs font-medium border border-slate-300 rounded-lg p-2.5 bg-white text-slate-800 focus:ring-2 focus:ring-emerald-500 outline-none"
+          <div className="flex items-center gap-1.5 border-b border-outline-variant overflow-x-auto">
+            {tabs.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold border-b-2 whitespace-nowrap transition ${
+                    isActive ? "border-primary text-primary" : "border-transparent text-on-surface-variant hover:text-on-surface"
+                  }`}
                 >
-                  <option value="helada">❄️ Helada Agronómica (-3°C)</option>
-                  <option value="inundacion">🌧️ Crecida de Río / Lluvias</option>
-                  <option value="sequia">☀️ Estrés Hídrico Extremo</option>
-                  <option value="granizo">🌨️ Tormenta de Granizo</option>
-                  <option value="plaga">🐛 Brote Fitosanitario</option>
-                </select>
+                  <Icon className="w-4 h-4" />
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
+
+          {activeTab === "motor" && <SurplusMatchPanel key={selectedPlot.id} plot={selectedPlot} onConfirmed={handleSurplusConfirmed} />}
+
+          {activeTab === "foto" && <CropPhotoAnalysisView key={selectedPlot.id} plot={selectedPlot} />}
+
+          {activeTab === "simulador" && (
+            <div className="bg-surface-container-lowest rounded-xl p-6 border border-outline-variant space-y-6">
+              <div className="flex items-center justify-between border-b border-outline-variant pb-3">
+                <h4 className="font-bold text-sm text-on-surface flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4 text-primary" />
+                  Simulador manual de pérdida vs. cosecha anticipada
+                </h4>
               </div>
 
-              <div>
-                <label className="text-xs font-semibold text-slate-700 block mb-1">
-                  Ventana de Tiempo Prevista
-                </label>
-                <select
-                  value={urgencyDays}
-                  onChange={(e) => setUrgencyDays(Number(e.target.value))}
-                  className="w-full text-xs font-medium border border-slate-300 rounded-lg p-2.5 bg-white text-slate-800 focus:ring-2 focus:ring-emerald-500 outline-none"
-                >
-                  <option value={1}>🚨 24 a 36 Horas (Urgente)</option>
-                  <option value={2}>⚠️ 48 Horas (Planificado)</option>
-                  <option value={5}>📅 5 a 7 Días (Preventivo)</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="text-xs font-semibold text-slate-700 block mb-1">
-                  % Cosecha Rescatable: <strong className="text-emerald-700">{rescuePercentage}%</strong>
-                </label>
-                <input
-                  type="range"
-                  min="20"
-                  max="100"
-                  value={rescuePercentage}
-                  onChange={(e) => setRescuePercentage(Number(e.target.value))}
-                  className="w-full accent-emerald-600 mt-2"
-                />
-              </div>
-            </div>
-
-            {/* Impact Calculation Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
-              <div className="space-y-1">
-                <span className="text-[11px] font-semibold text-slate-500 uppercase">Excedente a Rescatar</span>
-                <div className="text-2xl font-black text-slate-900">{calculatedRescuedTons} <span className="text-xs font-bold text-slate-500">Ton</span></div>
-                <p className="text-[10px] text-slate-500">Equivalente a {(calculatedRescuedTons * 1000).toLocaleString()} kg frescos</p>
-              </div>
-
-              <div className="space-y-1">
-                <span className="text-[11px] font-semibold text-slate-500 uppercase">Raciones de Comida</span>
-                <div className="text-2xl font-black text-emerald-700">{mealsGenerated.toLocaleString()}</div>
-                <p className="text-[10px] text-emerald-600">Para comedores y comunidades vulnerables</p>
-              </div>
-
-              <div className="space-y-1">
-                <span className="text-[11px] font-semibold text-slate-500 uppercase">CO₂ Evitado</span>
-                <div className="text-2xl font-black text-teal-700">{(co2SavedKg / 1000).toFixed(1)} <span className="text-xs font-bold text-slate-500">Ton</span></div>
-                <p className="text-[10px] text-teal-600">Por prevención de descomposición en campo</p>
-              </div>
-            </div>
-
-            {/* Destination Food Bank Matching */}
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-slate-800 block">
-                Emparejamiento Inteligente de Centro de Acopio / Banco de Alimentos:
-              </label>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {foodBanks.map((fb) => (
-                  <div
-                    key={fb.id}
-                    onClick={() => setSelectedFoodBankId(fb.id)}
-                    className={`p-3.5 rounded-xl border cursor-pointer transition ${
-                      selectedFoodBankId === fb.id
-                        ? "bg-emerald-50/80 border-emerald-500 ring-2 ring-emerald-500/20"
-                        : "bg-white border-slate-200 hover:bg-slate-50"
-                    }`}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="text-xs font-semibold text-on-surface-variant block mb-1">Amenaza meteorológica</label>
+                  <select
+                    value={threatInput}
+                    onChange={(e) => setThreatInput(e.target.value as ThreatType)}
+                    className="w-full text-xs font-medium border border-outline-variant rounded-lg p-2.5 bg-surface focus:ring-1 focus:ring-primary outline-none"
                   >
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-slate-900">{fb.name}</span>
-                      <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-semibold">
-                        Capacidad: {fb.storageCapacityTons} Ton
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-slate-500 mt-1">📍 {fb.region} • {fb.beneficiariesServedDaily.toLocaleString()} beneficiarios/día</p>
-                    <div className="mt-2 flex items-center justify-between text-[10px] text-slate-600">
-                      <span>Cámara fría: <strong className={fb.refrigerationAvailable ? "text-emerald-700" : "text-slate-400"}>{fb.refrigerationAvailable ? "Sí" : "No"}</strong></span>
-                      <span className="text-emerald-700 font-bold">Ruta directa: ~28 km</span>
-                    </div>
-                  </div>
-                ))}
+                    <option value="helada">❄️ Helada agronómica</option>
+                    <option value="inundacion">🌧️ Crecida de río / lluvias</option>
+                    <option value="sequia">☀️ Estrés hídrico extremo</option>
+                    <option value="granizo">🌨️ Tormenta de granizo</option>
+                    <option value="plaga">🐛 Brote fitosanitario</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-on-surface-variant block mb-1">
+                    % cosecha rescatable: <strong className="text-primary">{rescuePercentage}%</strong>
+                  </label>
+                  <input
+                    type="range"
+                    min="20"
+                    max="100"
+                    value={rescuePercentage}
+                    onChange={(e) => setRescuePercentage(Number(e.target.value))}
+                    className="w-full accent-[#012d1d] mt-3"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-on-surface-variant block mb-1">Destino</label>
+                  <select
+                    value={selectedFoodBankId}
+                    onChange={(e) => setSelectedFoodBankId(e.target.value)}
+                    className="w-full text-xs font-medium border border-outline-variant rounded-lg p-2.5 bg-surface focus:ring-1 focus:ring-primary outline-none"
+                  >
+                    {foodBanks.map((fb) => (
+                      <option key={fb.id} value={fb.id}>
+                        {fb.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
-            </div>
 
-            {/* Finalize and Dispatch Button */}
-            <div className="pt-2">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-surface-container-low p-4 rounded-xl">
+                <div>
+                  <span className="text-[11px] font-semibold text-on-surface-variant uppercase">Excedente a rescatar</span>
+                  <div className="text-2xl font-black text-on-surface">
+                    {calculatedRescuedTons} <span className="text-xs font-bold text-on-surface-variant">ton</span>
+                  </div>
+                </div>
+                <div>
+                  <span className="text-[11px] font-semibold text-on-surface-variant uppercase">Raciones de comida</span>
+                  <div className="text-2xl font-black text-primary">{mealsGenerated.toLocaleString()}</div>
+                </div>
+                <div>
+                  <span className="text-[11px] font-semibold text-on-surface-variant uppercase">CO₂ evitado</span>
+                  <div className="text-2xl font-black text-primary">{(co2SavedKg / 1000).toFixed(1)} ton</div>
+                </div>
+              </div>
+
               <button
                 onClick={handleCreateSurplusDispatch}
-                className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-sm flex items-center justify-center gap-2 shadow-md transition transform active:scale-98"
+                className="w-full py-3 bg-primary text-on-primary font-bold rounded-xl text-sm flex items-center justify-center gap-2 hover:bg-primary-container hover:text-on-primary-container transition"
               >
                 <Truck className="w-5 h-5" />
-                <span>Generar Manifiesto de Despacho y Donación Preventiva ({calculatedRescuedTons} Ton)</span>
+                Generar manifiesto de despacho ({calculatedRescuedTons} ton)
               </button>
+
+              {generatedVoucher && (
+                <div className="p-5 rounded-xl bg-inverse-surface text-inverse-on-surface space-y-3 animate-in zoom-in-95">
+                  <div className="flex items-start justify-between border-b border-white/10 pb-2">
+                    <div className="flex items-center gap-2">
+                      <QrCode className="w-5 h-5" />
+                      <div>
+                        <h5 className="font-bold text-sm">Manifiesto de despacho</h5>
+                        <span className="text-xs font-mono opacity-80">Folio: {generatedVoucher.taxVoucherCode}</span>
+                      </div>
+                    </div>
+                    <button onClick={() => setGeneratedVoucher(null)} className="opacity-70 hover:opacity-100">
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs bg-white/5 p-3 rounded-lg">
+                    <div>
+                      <span className="opacity-60 block text-[10px]">Volumen</span>
+                      <strong>{generatedVoucher.rescuedTons} ton</strong>
+                    </div>
+                    <div>
+                      <span className="opacity-60 block text-[10px]">Destino</span>
+                      <strong>{generatedVoucher.destinationCenterName}</strong>
+                    </div>
+                    <div className="col-span-2">
+                      <span className="opacity-60 block text-[10px]">Estado</span>
+                      <span className="inline-block text-[10px] font-bold bg-primary-fixed text-on-primary-fixed px-2 py-0.5 rounded-full">En ruta</span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => alert(`Descargando PDF del manifiesto: ${generatedVoucher.taxVoucherCode}`)}
+                    className="text-xs font-semibold flex items-center gap-1.5 opacity-90 hover:opacity-100"
+                  >
+                    <FileText className="w-3.5 h-3.5" /> Descargar PDF
+                  </button>
+                </div>
+              )}
             </div>
-
-            {/* Generated Official Voucher / Tax Certificate Modal Card */}
-            {generatedVoucher && (
-              <div className="p-5 rounded-2xl bg-slate-900 text-white border border-emerald-500/50 shadow-xl space-y-4 animate-in zoom-in-95">
-                <div className="flex items-start justify-between border-b border-slate-700 pb-3">
-                  <div className="flex items-center gap-2">
-                    <div className="p-2 rounded-lg bg-emerald-500/20 text-emerald-400">
-                      <ShieldCheck className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h5 className="font-bold text-sm text-white">Manifiesto Oficial de Cosecha y Donación Preventiva</h5>
-                      <span className="text-xs text-emerald-400 font-mono">Folio: {generatedVoucher.taxVoucherCode}</span>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => setGeneratedVoucher(null)}
-                    className="text-slate-400 hover:text-white"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs bg-slate-800/80 p-3 rounded-xl">
-                  <div>
-                    <span className="text-slate-400 block text-[10px]">Cultivo Rescatado:</span>
-                    <strong className="text-emerald-400">{generatedVoucher.cropName}</strong>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block text-[10px]">Volumen:</span>
-                    <strong className="text-white">{generatedVoucher.rescuedTons} Toneladas</strong>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block text-[10px]">Destino Asignado:</span>
-                    <strong className="text-white">{generatedVoucher.destinationCenterName}</strong>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block text-[10px]">Estado Logístico:</span>
-                    <span className="inline-block text-[10px] font-bold bg-emerald-500 text-slate-950 px-2 py-0.5 rounded">
-                      En Ruta
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between text-xs text-slate-300">
-                  <div className="flex items-center gap-2">
-                    <QrCode className="w-10 h-10 text-white bg-slate-800 p-1 rounded" />
-                    <div>
-                      <span className="text-[11px] font-semibold text-white block">Código de Verificación SAT / Banco de Alimentos</span>
-                      <span className="text-[10px] text-slate-400">Válido para deducción fiscal y trazabilidad comunitaria</span>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={() => alert(`Descargando PDF del Manifiesto Folio: ${generatedVoucher.taxVoucherCode}`)}
-                    className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-semibold border border-slate-600 transition flex items-center gap-1.5"
-                  >
-                    <FileText className="w-3.5 h-3.5" />
-                    <span>Descargar PDF</span>
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
+          )}
         </div>
       </div>
 
-      {/* New Plot Registration Modal */}
       {showNewPlotModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4 animate-in zoom-in-95">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+        <div className="fixed inset-0 z-50 bg-inverse-surface/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-surface-container-lowest rounded-xl max-w-lg w-full p-6 shadow-2xl border border-outline-variant space-y-4 animate-in zoom-in-95">
+            <div className="flex items-center justify-between border-b border-outline-variant pb-3">
               <div className="flex items-center gap-2">
-                <Sprout className="w-5 h-5 text-emerald-600" />
-                <h3 className="font-bold text-base text-slate-900">Registrar Nueva Parcela Agrícola</h3>
+                <Sprout className="w-5 h-5 text-primary" />
+                <h3 className="font-bold text-base text-on-surface">Registrar nueva parcela</h3>
               </div>
-              <button
-                onClick={() => setShowNewPlotModal(false)}
-                className="text-slate-400 hover:text-slate-600 p-1"
-              >
+              <button onClick={() => setShowNewPlotModal(false)} className="text-on-surface-variant hover:text-on-surface p-1">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             <form onSubmit={handleAddNewPlot} className="space-y-4">
               <div>
-                <label className="text-xs font-semibold text-slate-700 block mb-1">Nombre de la Parcela / Rancho</label>
+                <label className="text-xs font-semibold text-on-surface-variant block mb-1">Nombre de la parcela</label>
                 <input
                   type="text"
                   required
                   placeholder="Ej: Parcela El Recuerdo - Lote 3"
                   value={newPlotForm.name}
                   onChange={(e) => setNewPlotForm({ ...newPlotForm, name: e.target.value })}
-                  className="w-full text-xs border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-emerald-500 outline-none"
+                  className="w-full text-xs border border-outline-variant rounded-lg p-2.5 focus:ring-1 focus:ring-primary outline-none"
                 />
               </div>
-
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-semibold text-slate-700 block mb-1">Tipo de Cultivo</label>
+                  <label className="text-xs font-semibold text-on-surface-variant block mb-1">Tipo de cultivo</label>
                   <input
                     type="text"
                     required
-                    placeholder="Ej: Maíz Blanco, Tomate, Aguacate"
                     value={newPlotForm.cropType}
                     onChange={(e) => setNewPlotForm({ ...newPlotForm, cropType: e.target.value })}
-                    className="w-full text-xs border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-emerald-500 outline-none"
+                    className="w-full text-xs border border-outline-variant rounded-lg p-2.5 focus:ring-1 focus:ring-primary outline-none"
                   />
                 </div>
-
                 <div>
-                  <label className="text-xs font-semibold text-slate-700 block mb-1">Categoría</label>
+                  <label className="text-xs font-semibold text-on-surface-variant block mb-1">Categoría</label>
                   <select
                     value={newPlotForm.cropCategory}
                     onChange={(e: any) => setNewPlotForm({ ...newPlotForm, cropCategory: e.target.value })}
-                    className="w-full text-xs border border-slate-300 rounded-lg p-2.5 bg-white focus:ring-2 focus:ring-emerald-500 outline-none"
+                    className="w-full text-xs border border-outline-variant rounded-lg p-2.5 bg-surface focus:ring-1 focus:ring-primary outline-none"
                   >
-                    <option value="granos">Granos Básicos</option>
+                    <option value="granos">Granos básicos</option>
                     <option value="hortalizas">Hortalizas</option>
-                    <option value="frutas">Frutas / Perennes</option>
+                    <option value="frutas">Frutas / perennes</option>
                     <option value="tuberculos">Tubérculos</option>
                     <option value="legumbres">Legumbres</option>
                   </select>
                 </div>
               </div>
-
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-semibold text-slate-700 block mb-1">Superficie (Hectáreas)</label>
+                  <label className="text-xs font-semibold text-on-surface-variant block mb-1">Hectáreas</label>
                   <input
                     type="number"
                     step="0.1"
                     required
                     value={newPlotForm.hectares}
                     onChange={(e) => setNewPlotForm({ ...newPlotForm, hectares: Number(e.target.value) })}
-                    className="w-full text-xs border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-emerald-500 outline-none"
+                    className="w-full text-xs border border-outline-variant rounded-lg p-2.5 focus:ring-1 focus:ring-primary outline-none"
                   />
                 </div>
-
                 <div>
-                  <label className="text-xs font-semibold text-slate-700 block mb-1">Rendimiento Estimado (Ton)</label>
+                  <label className="text-xs font-semibold text-on-surface-variant block mb-1">Rendimiento estimado (ton)</label>
                   <input
                     type="number"
                     step="0.5"
                     required
                     value={newPlotForm.estimatedYieldTons}
                     onChange={(e) => setNewPlotForm({ ...newPlotForm, estimatedYieldTons: Number(e.target.value) })}
-                    className="w-full text-xs border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-emerald-500 outline-none"
+                    className="w-full text-xs border border-outline-variant rounded-lg p-2.5 focus:ring-1 focus:ring-primary outline-none"
                   />
                 </div>
               </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-semibold text-slate-700 block mb-1">Etapa Fenológica</label>
-                  <select
-                    value={newPlotForm.phenologicalStage}
-                    onChange={(e: any) => setNewPlotForm({ ...newPlotForm, phenologicalStage: e.target.value })}
-                    className="w-full text-xs border border-slate-300 rounded-lg p-2.5 bg-white focus:ring-2 focus:ring-emerald-500 outline-none"
-                  >
-                    <option value="madurez_cosecha">Madurez de Cosecha</option>
-                    <option value="llenado_grano">Llenado de Grano / Fruto</option>
-                    <option value="floracion">Floración</option>
-                    <option value="vegetativo">Desarrollo Vegetativo</option>
-                    <option value="germinacion">Germinación</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="text-xs font-semibold text-slate-700 block mb-1">Región / Municipio</label>
-                  <input
-                    type="text"
-                    required
-                    value={newPlotForm.locationName}
-                    onChange={(e) => setNewPlotForm({ ...newPlotForm, locationName: e.target.value })}
-                    className="w-full text-xs border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-emerald-500 outline-none"
-                  />
-                </div>
+              <div>
+                <label className="text-xs font-semibold text-on-surface-variant block mb-1">Región / municipio</label>
+                <input
+                  type="text"
+                  required
+                  value={newPlotForm.locationName}
+                  onChange={(e) => setNewPlotForm({ ...newPlotForm, locationName: e.target.value })}
+                  className="w-full text-xs border border-outline-variant rounded-lg p-2.5 focus:ring-1 focus:ring-primary outline-none"
+                />
               </div>
-
               <div className="pt-2 flex items-center justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowNewPlotModal(false)}
-                  className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg"
-                >
+                <button type="button" onClick={() => setShowNewPlotModal(false)} className="px-4 py-2 text-xs font-semibold text-on-surface-variant hover:bg-surface-container-low rounded-lg">
                   Cancelar
                 </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-sm"
-                >
-                  Guardar y Activar Monitoreo
+                <button type="submit" className="px-5 py-2 text-xs font-bold text-on-primary bg-primary hover:bg-primary-container hover:text-on-primary-container rounded-lg">
+                  Guardar y activar monitoreo
                 </button>
               </div>
             </form>

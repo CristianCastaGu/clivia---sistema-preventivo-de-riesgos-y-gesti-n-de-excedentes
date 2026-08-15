@@ -1,26 +1,38 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Header } from "./components/Header";
+import { OnboardingView } from "./components/OnboardingView";
 import { DashboardView } from "./components/DashboardView";
 import { MapView } from "./components/MapView";
 import { CultivationModule } from "./components/CultivationModule";
-import { ChatBotView } from "./components/ChatBotView";
+import { FloatingAssistant } from "./components/FloatingAssistant";
 import { AlertsCenterView } from "./components/AlertsCenterView";
 import { FoodBankLogisticsView } from "./components/FoodBankLogisticsView";
+import { SurplusMarketplaceView } from "./components/SurplusMarketplaceView";
+import { EmergencyDirectoryView } from "./components/EmergencyDirectoryView";
 import { IncidentReportModal } from "./components/IncidentReportModal";
-import { DeviceFrameWrapper } from "./components/DeviceFrameWrapper";
-import { 
-  INITIAL_ALERTS, 
-  INITIAL_PLOTS, 
-  INITIAL_FOOD_BANKS, 
-  INITIAL_INCIDENTS, 
-  INITIAL_TRANSACTIONS 
+import {
+  INITIAL_ALERTS,
+  INITIAL_PLOTS,
+  INITIAL_FOOD_BANKS,
+  INITIAL_INCIDENTS,
+  INITIAL_TRANSACTIONS,
+  INITIAL_SURPLUS_LISTINGS,
 } from "./data/mockData";
-import { UserRole, AlertSeverity, CropPlot, CitizenIncident, SurplusTransaction } from "./types";
+import { UserRole, AlertSeverity, CropPlot, CitizenIncident, SurplusTransaction, UserProfile, UserLocation } from "./types";
+
+const PROFILE_STORAGE_KEY = "clivia.profile";
 
 export default function App() {
+  const [profile, setProfile] = useState<UserProfile | null>(() => {
+    try {
+      const stored = localStorage.getItem(PROFILE_STORAGE_KEY);
+      return stored ? (JSON.parse(stored) as UserProfile) : null;
+    } catch {
+      return null;
+    }
+  });
+
   const [currentTab, setCurrentTab] = useState<string>("dashboard");
-  const [userRole, setUserRole] = useState<UserRole>("productor");
-  const [isMobileDeviceMode, setIsMobileDeviceMode] = useState<boolean>(false);
 
   // Core Data States
   const [alerts, setAlerts] = useState(INITIAL_ALERTS);
@@ -28,6 +40,7 @@ export default function App() {
   const [foodBanks, setFoodBanks] = useState(INITIAL_FOOD_BANKS);
   const [incidents, setIncidents] = useState<CitizenIncident[]>(INITIAL_INCIDENTS);
   const [transactions, setTransactions] = useState<SurplusTransaction[]>(INITIAL_TRANSACTIONS);
+  const [surplusListings] = useState(INITIAL_SURPLUS_LISTINGS);
 
   // Selected plot for surplus workflow
   const [selectedPlotForSurplus, setSelectedPlotForSurplus] = useState<CropPlot | null>(null);
@@ -36,9 +49,25 @@ export default function App() {
   const [isIncidentModalOpen, setIsIncidentModalOpen] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (profile) {
+      localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(profile));
+    }
+  }, [profile]);
+
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3500);
+  };
+
+  const handleOnboardingComplete = (role: UserRole, location: UserLocation, displayName: string) => {
+    setProfile({ role, displayName, location });
+    setCurrentTab("dashboard");
+  };
+
+  const handleChangeRole = () => {
+    setProfile(null);
+    localStorage.removeItem(PROFILE_STORAGE_KEY);
   };
 
   const handleCreateIncident = (newInc: CitizenIncident) => {
@@ -52,11 +81,15 @@ export default function App() {
   };
 
   // Determine overall severity
-  const overallSeverity: AlertSeverity = alerts.some(a => a.severity === "rojo")
+  const overallSeverity: AlertSeverity = alerts.some((a) => a.severity === "rojo")
     ? "rojo"
-    : alerts.some(a => a.severity === "amarillo")
+    : alerts.some((a) => a.severity === "amarillo")
     ? "amarillo"
     : "verde";
+
+  if (!profile) {
+    return <OnboardingView onComplete={handleOnboardingComplete} />;
+  }
 
   const renderActiveView = () => {
     switch (currentTab) {
@@ -67,7 +100,7 @@ export default function App() {
             plots={plots}
             incidents={incidents}
             transactions={transactions}
-            userRole={userRole}
+            userRole={profile.role}
             onNavigate={(tab) => setCurrentTab(tab)}
             onOpenNewIncident={() => setIsIncidentModalOpen(true)}
             onSelectPlotForSurplus={handleSelectPlotForSurplus}
@@ -95,18 +128,12 @@ export default function App() {
             preselectedPlot={selectedPlotForSurplus}
           />
         );
-      case "chat":
-        return <ChatBotView userRole={userRole} />;
       case "alertas":
         return <AlertsCenterView alerts={alerts} />;
       case "bancos":
-        return (
-          <FoodBankLogisticsView
-            foodBanks={foodBanks}
-            transactions={transactions}
-            onSelectPlotForSurplus={() => setCurrentTab("cultivos")}
-          />
-        );
+        return <SurplusMarketplaceView listings={surplusListings} foodBanks={foodBanks} transactions={transactions} />;
+      case "directorio":
+        return <EmergencyDirectoryView alerts={alerts} />;
       default:
         return (
           <DashboardView
@@ -114,7 +141,7 @@ export default function App() {
             plots={plots}
             incidents={incidents}
             transactions={transactions}
-            userRole={userRole}
+            userRole={profile.role}
             onNavigate={(tab) => setCurrentTab(tab)}
             onOpenNewIncident={() => setIsIncidentModalOpen(true)}
             onSelectPlotForSurplus={handleSelectPlotForSurplus}
@@ -124,46 +151,35 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-900 font-sans antialiased">
-      <DeviceFrameWrapper
-        isMobileMode={isMobileDeviceMode}
-        setIsMobileMode={setIsMobileDeviceMode}
+    <div className="min-h-screen bg-surface text-on-surface font-sans antialiased">
+      <Header
         currentTab={currentTab}
         setCurrentTab={setCurrentTab}
-      >
-        {/* Header Navigation */}
-        <Header
-          currentTab={currentTab}
-          setCurrentTab={setCurrentTab}
-          userRole={userRole}
-          setUserRole={setUserRole}
-          isMobileDeviceMode={isMobileDeviceMode}
-          setIsMobileDeviceMode={setIsMobileDeviceMode}
-          overallSeverity={overallSeverity}
-          activeAlerts={alerts}
-          onOpenNewIncident={() => setIsIncidentModalOpen(true)}
-        />
+        profile={profile}
+        onChangeRole={handleChangeRole}
+        overallSeverity={overallSeverity}
+        activeAlerts={alerts}
+        onOpenNewIncident={() => setIsIncidentModalOpen(true)}
+      />
 
-        {/* Main Content Area */}
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
-          {renderActiveView()}
-        </main>
-      </DeviceFrameWrapper>
+      <main className="pt-16 md:pl-64 pb-20 md:pb-8 min-h-screen">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">{renderActiveView()}</div>
+      </main>
 
-      {/* Incident Report Modal */}
       <IncidentReportModal
         isOpen={isIncidentModalOpen}
         onClose={() => setIsIncidentModalOpen(false)}
         onSubmit={handleCreateIncident}
-        userRole={userRole}
+        userRole={profile.role}
       />
 
-      {/* Global Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-2xl border border-slate-700 text-xs font-semibold flex items-center gap-2 animate-in fade-in slide-in-from-bottom-4">
+        <div className="fixed bottom-20 md:bottom-6 left-4 md:left-[calc(16rem+1.5rem)] z-50 bg-inverse-surface text-inverse-on-surface px-4 py-3 rounded-xl shadow-lg text-xs font-semibold flex items-center gap-2 animate-in fade-in slide-in-from-bottom-4">
           <span>{toastMessage}</span>
         </div>
       )}
+
+      <FloatingAssistant userRole={profile.role} />
     </div>
   );
 }

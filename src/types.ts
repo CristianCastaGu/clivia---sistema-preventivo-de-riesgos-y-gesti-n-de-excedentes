@@ -108,3 +108,71 @@ export interface ChatMessage {
   suggestedActions?: string[];
   isStreaming?: boolean;
 }
+
+export interface UserLocation {
+  label: string; // e.g. "Tocancipá, Cundinamarca"
+  coordinates: [number, number] | null;
+  source: "manual" | "gps" | null;
+}
+
+export interface UserProfile {
+  role: UserRole;
+  displayName: string;
+  location: UserLocation;
+}
+
+export interface EmergencyContact {
+  id: string;
+  name: string;
+  category: "bomberos" | "salud" | "policia" | "gestion_riesgo" | "ambiental";
+  detail: string;
+  phone: string;
+  distanceKm: number;
+  priority: "alta" | "media";
+}
+
+export interface ResponseProtocol {
+  id: string;
+  threatType: ThreatType;
+  title: string;
+  steps: string[];
+}
+
+export interface SurplusListing {
+  id: string;
+  plotId: string;
+  farmerName: string;
+  cropName: string;
+  quantityLabel: string; // "15 canastillas (~300kg)"
+  locationName: string;
+  distanceKm: number;
+  expiresInLabel: string; // "Vence en 48h"
+  urgency: AlertSeverity;
+  priceLabel: string;
+  imageEmoji: string;
+}
+
+export interface SurplusMatchOption {
+  id: string;
+  kind: "comprador" | "transformacion" | "donacion";
+  name: string;
+  distanceKm: number;
+  reason: string;
+  tag: string;
+  message: string;
+}
+
+export interface SurplusMatchResult {
+  requiresForcedHarvest: boolean;
+  reasoning: string;
+  estimatedTons: number;
+  windowHours: number;
+  options: SurplusMatchOption[];
+}
+
+export interface CropPhotoDiagnosis {
+  status: "saludable" | "atencion" | "critico";
+  summary: string;
+  findings: string[];
+  recommendedActions: string[];
+}

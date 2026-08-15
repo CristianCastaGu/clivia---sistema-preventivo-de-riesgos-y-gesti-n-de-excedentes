@@ -1,4 +1,4 @@
-import { WeatherAlert, CropPlot, FoodBankCenter, CitizenIncident, SurplusTransaction } from "../types";
+import { WeatherAlert, CropPlot, FoodBankCenter, CitizenIncident, SurplusTransaction, EmergencyContact, ResponseProtocol, SurplusListing } from "../types";
 
 export const INITIAL_ALERTS: WeatherAlert[] = [
   {
@@ -317,5 +317,155 @@ export const INITIAL_TRANSACTIONS: SurplusTransaction[] = [
     estimatedCo2SavedKg: 5500,
     mealsGenerated: 33000,
     taxVoucherCode: "CLIVIA-SAT-2025-77412B"
+  }
+];
+
+// Directorio de emergencia — referencia Tocancipá / Sabana Centro, Cundinamarca.
+export const EMERGENCY_CONTACTS: EmergencyContact[] = [
+  {
+    id: "ec-01",
+    name: "Línea Nacional de Emergencias",
+    category: "gestion_riesgo",
+    detail: "Despacho unificado 24/7",
+    phone: "123",
+    distanceKm: 0,
+    priority: "alta"
+  },
+  {
+    id: "ec-02",
+    name: "Bomberos Tocancipá",
+    category: "bomberos",
+    detail: "Estación central",
+    phone: "(601) 856 0202",
+    distanceKm: 2.4,
+    priority: "alta"
+  },
+  {
+    id: "ec-03",
+    name: "Hospital San Rafael Tocancipá",
+    category: "salud",
+    detail: "Urgencias 24 horas",
+    phone: "(601) 856 0110",
+    distanceKm: 3.1,
+    priority: "alta"
+  },
+  {
+    id: "ec-04",
+    name: "Policía Nacional — Estación Tocancipá",
+    category: "policia",
+    detail: "Cuadrante rural y urbano",
+    phone: "(601) 856 0055",
+    distanceKm: 2.8,
+    priority: "media"
+  },
+  {
+    id: "ec-05",
+    name: "UNGRD — Unidad Nacional de Gestión del Riesgo",
+    category: "gestion_riesgo",
+    detail: "Coordinación Cundinamarca",
+    phone: "018000 111 519",
+    distanceKm: 32,
+    priority: "media"
+  },
+  {
+    id: "ec-06",
+    name: "CAR Cundinamarca",
+    category: "ambiental",
+    detail: "Emergencias ambientales y de cuencas",
+    phone: "(601) 320 9000",
+    distanceKm: 28,
+    priority: "media"
+  }
+];
+
+export const RESPONSE_PROTOCOLS: ResponseProtocol[] = [
+  {
+    id: "rp-helada",
+    threatType: "helada",
+    title: "Helada agronómica",
+    steps: [
+      "Activar riego por aspersión antes del anochecer para elevar la temperatura foliar.",
+      "Cubrir semilleros y hortalizas con manta térmica o rastrojo seco.",
+      "Priorizar cosecha de lotes con más del 80% de maduración.",
+      "Reportar el excedente esperado desde el chat de CLIVIA para activar el motor de excedentes."
+    ]
+  },
+  {
+    id: "rp-inundacion",
+    threatType: "inundacion",
+    title: "Creciente / inundación",
+    steps: [
+      "Despejar zanjas y canales de drenaje perimetrales a la parcela.",
+      "Poner a resguardo insumos, semillas y maquinaria en cotas altas.",
+      "Verificar el estado de vías de acceso antes de movilizar carga.",
+      "Ubicar el albergue temporal habilitado más cercano en el mapa."
+    ]
+  },
+  {
+    id: "rp-vendaval",
+    threatType: "vendaval",
+    title: "Vendaval / ráfagas fuertes",
+    steps: [
+      "Asegurar cubiertas, invernaderos y estructuras livianas.",
+      "Alejar del cultivo cualquier maquinaria o material suelto.",
+      "Reportar postes o tendido eléctrico caído a la línea 123.",
+      "Suspender labores de fumigación y aspersión hasta que pase el evento."
+    ]
+  }
+];
+
+// Excedentes visibles en el marketplace — visibilidad entre productores y receptores.
+export const INITIAL_SURPLUS_LISTINGS: SurplusListing[] = [
+  {
+    id: "sl-01",
+    plotId: "plot-01",
+    farmerName: "Don Mateo Ramírez",
+    cropName: "Maíz Blanco Criollo",
+    quantityLabel: "22 toneladas",
+    locationName: "Huamantla, Tlaxcala",
+    distanceKm: 5,
+    expiresInLabel: "Vence en 48h",
+    urgency: "rojo",
+    priceLabel: "Precio de mercado",
+    imageEmoji: "🌽"
+  },
+  {
+    id: "sl-02",
+    plotId: "plot-02",
+    farmerName: "María Elena Fuentes",
+    cropName: "Tomate Saladette",
+    quantityLabel: "15 canastillas (~300 kg)",
+    locationName: "San Salvador el Verde, Puebla",
+    distanceKm: 12,
+    expiresInLabel: "Vence en 72h",
+    urgency: "amarillo",
+    priceLabel: "$2.400/kg",
+    imageEmoji: "🍅"
+  },
+  {
+    id: "sl-03",
+    plotId: "plot-04",
+    farmerName: "Teresa Solís",
+    cropName: "Fresa Festival",
+    quantityLabel: "20 bins (~800 kg)",
+    locationName: "Irapuato / Valle de Santiago",
+    distanceKm: 22,
+    expiresInLabel: "Vence en 24h",
+    urgency: "rojo",
+    priceLabel: "$5.100/kg",
+    imageEmoji: "🍓"
+  },
+  {
+    id: "sl-04",
+    plotId: "plot-05",
+    farmerName: "Roberto Gómez",
+    cropName: "Papaya Maradol",
+    quantityLabel: "3.5 toneladas",
+    locationName: "San Pedro Pochutla, Oaxaca",
+    distanceKm: 45,
+    expiresInLabel: "Vence en 5 días",
+    urgency: "verde",
+    priceLabel: "$1.800/kg",
+    imageEmoji: "🍈"
   }
 ];

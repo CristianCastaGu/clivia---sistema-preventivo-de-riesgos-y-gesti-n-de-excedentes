@@ -65,13 +65,13 @@ export const MapView: React.FC<MapViewProps> = ({
   return (
     <div className="space-y-4 pb-12 animate-in fade-in">
       {/* Top Controls Bar */}
-      <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-surface-container-lowest rounded-xl p-4 border border-outline-variant flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-            <MapPin className="w-5 h-5 text-emerald-600" />
-            <span>Mapa Geoespacial de Riesgos y Recursos Logísticos</span>
+          <h2 className="text-lg font-bold text-on-surface flex items-center gap-2">
+            <MapPin className="w-5 h-5 text-primary" />
+            <span>Mapa geoespacial de riesgos y recursos</span>
           </h2>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-on-surface-variant">
             Visualización integrada de polígonos de alerta, cultivos vulnerables, albergues y centros de acopio.
           </p>
         </div>
@@ -81,7 +81,7 @@ export const MapView: React.FC<MapViewProps> = ({
           <select
             value={activeRegionView}
             onChange={(e) => setActiveRegionView(e.target.value)}
-            className="text-xs font-semibold border border-slate-300 rounded-lg px-3 py-1.5 bg-slate-50 text-slate-700 focus:ring-2 focus:ring-emerald-500 outline-none"
+            className="text-xs font-semibold border border-outline-variant rounded-full px-3.5 py-2 bg-surface-container-low text-on-surface-variant focus:ring-1 focus:ring-primary outline-none"
           >
             {regions.map((r) => (
               <option key={r.id} value={r.id}>
@@ -92,10 +92,10 @@ export const MapView: React.FC<MapViewProps> = ({
 
           <button
             onClick={onOpenNewIncident}
-            className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1 shadow-sm transition"
+            className="px-3.5 py-2 bg-tertiary-container text-on-tertiary-container hover:opacity-90 rounded-full text-xs font-semibold flex items-center gap-1 transition"
           >
             <AlertTriangle className="w-3.5 h-3.5" />
-            <span>Reportar en Mapa</span>
+            <span>Reportar en mapa</span>
           </button>
         </div>
       </div>
@@ -420,23 +420,18 @@ export const MapView: React.FC<MapViewProps> = ({
         </div>
 
         {/* Right Detail Inspector Drawer (4 cols) */}
-        <div className="lg:col-span-4 bg-white rounded-2xl border border-slate-200 shadow-sm p-5 flex flex-col justify-between space-y-4">
+        <div className="lg:col-span-4 bg-surface-container-lowest rounded-xl border border-outline-variant p-5 flex flex-col justify-between space-y-4">
           {selectedItem ? (
             <div className="space-y-4">
               {/* Header of Inspector */}
-              <div className="flex items-start justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-start justify-between border-b border-outline-variant pb-3">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-slate-100 text-slate-700">
-                    Ficha de Detalle
+                  <span className="text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-surface-container-low text-on-surface-variant">
+                    Ficha de detalle
                   </span>
-                  <span className="text-xs text-slate-400 capitalize">
-                    {selectedItem.type}
-                  </span>
+                  <span className="text-xs text-outline capitalize">{selectedItem.type}</span>
                 </div>
-                <button
-                  onClick={() => setSelectedItem(null)}
-                  className="text-slate-400 hover:text-slate-600 p-1"
-                >
+                <button onClick={() => setSelectedItem(null)} className="text-on-surface-variant hover:text-on-surface p-1">
                   <X className="w-4 h-4" />
                 </button>
               </div>
@@ -445,48 +440,48 @@ export const MapView: React.FC<MapViewProps> = ({
               {selectedItem.type === "parcela" && (
                 <div className="space-y-3">
                   <div>
-                    <span className="text-[10px] font-bold text-rose-600 uppercase bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
+                    <span className="text-[10px] font-bold text-on-tertiary-container uppercase bg-tertiary-fixed px-2 py-0.5 rounded-full">
                       Riesgo {selectedItem.data.riskLevel.toUpperCase()}
                     </span>
-                    <h3 className="text-base font-bold text-slate-900 mt-1">{selectedItem.data.name}</h3>
-                    <p className="text-xs text-slate-500">Titular: {selectedItem.data.farmerName}</p>
+                    <h3 className="text-base font-bold text-on-surface mt-1">{selectedItem.data.name}</h3>
+                    <p className="text-xs text-on-surface-variant">Titular: {selectedItem.data.farmerName}</p>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2 bg-slate-50 p-3 rounded-xl text-xs">
+                  <div className="grid grid-cols-2 gap-2 bg-surface-container-low p-3 rounded-xl text-xs">
                     <div>
-                      <span className="text-slate-400 block text-[10px]">Cultivo:</span>
-                      <strong className="text-slate-800">{selectedItem.data.cropType}</strong>
+                      <span className="text-on-surface-variant block text-[10px]">Cultivo:</span>
+                      <strong className="text-on-surface">{selectedItem.data.cropType}</strong>
                     </div>
                     <div>
-                      <span className="text-slate-400 block text-[10px]">Superficie:</span>
-                      <strong className="text-slate-800">{selectedItem.data.hectares} Hectáreas</strong>
+                      <span className="text-on-surface-variant block text-[10px]">Superficie:</span>
+                      <strong className="text-on-surface">{selectedItem.data.hectares} Hectáreas</strong>
                     </div>
                     <div>
-                      <span className="text-slate-400 block text-[10px]">Cosecha estimada:</span>
-                      <strong className="text-slate-800">{selectedItem.data.estimatedYieldTons} Toneladas</strong>
+                      <span className="text-on-surface-variant block text-[10px]">Cosecha estimada:</span>
+                      <strong className="text-on-surface">{selectedItem.data.estimatedYieldTons} Toneladas</strong>
                     </div>
                     <div>
-                      <span className="text-slate-400 block text-[10px]">Etapa:</span>
-                      <strong className="text-slate-800 uppercase">{selectedItem.data.phenologicalStage.replace("_", " ")}</strong>
+                      <span className="text-on-surface-variant block text-[10px]">Etapa:</span>
+                      <strong className="text-on-surface uppercase">{selectedItem.data.phenologicalStage.replace("_", " ")}</strong>
                     </div>
                   </div>
 
-                  <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-xs space-y-1">
-                    <span className="font-bold text-amber-900 flex items-center gap-1">
-                      <AlertTriangle className="w-3.5 h-3.5" />
-                      Amenaza Activa: Helada Inminente (-3°C)
+                  <div className="p-3 bg-secondary-container/40 rounded-xl border border-secondary-container text-xs space-y-1">
+                    <span className="font-bold text-on-surface flex items-center gap-1">
+                      <AlertTriangle className="w-3.5 h-3.5 text-secondary" />
+                      Amenaza activa: helada inminente (-3°C)
                     </span>
-                    <p className="text-amber-800 text-[11px]">
+                    <p className="text-on-surface-variant text-[11px]">
                       Se recomienda iniciar cosecha anticipada preventiva en las próximas 36 horas para salvar hasta 28 toneladas.
                     </p>
                   </div>
 
                   <button
                     onClick={() => onNavigateToSurplus(selectedItem.data)}
-                    className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2 shadow-sm transition"
+                    className="w-full py-2.5 bg-primary hover:bg-primary-container text-on-primary hover:text-on-primary-container font-bold rounded-full text-xs flex items-center justify-center gap-2 transition"
                   >
                     <Truck className="w-4 h-4" />
-                    <span>Activar Protocolo de Cosecha y Excedente</span>
+                    <span>Activar protocolo de cosecha y excedente</span>
                   </button>
                 </div>
               )}
@@ -494,39 +489,39 @@ export const MapView: React.FC<MapViewProps> = ({
               {selectedItem.type === "banco" && (
                 <div className="space-y-3">
                   <div>
-                    <span className="text-[10px] font-bold text-emerald-700 uppercase bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                    <span className="text-[10px] font-bold text-on-primary-container uppercase bg-primary-fixed px-2 py-0.5 rounded-full">
                       {selectedItem.data.type.replace("_", " ").toUpperCase()}
                     </span>
-                    <h3 className="text-base font-bold text-slate-900 mt-1">{selectedItem.data.name}</h3>
-                    <p className="text-xs text-slate-500">📍 {selectedItem.data.address}</p>
+                    <h3 className="text-base font-bold text-on-surface mt-1">{selectedItem.data.name}</h3>
+                    <p className="text-xs text-on-surface-variant">📍 {selectedItem.data.address}</p>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2 bg-slate-50 p-3 rounded-xl text-xs">
+                  <div className="grid grid-cols-2 gap-2 bg-surface-container-low p-3 rounded-xl text-xs">
                     <div>
-                      <span className="text-slate-400 block text-[10px]">Capacidad Bodega:</span>
-                      <strong className="text-slate-800">{selectedItem.data.storageCapacityTons} Ton</strong>
+                      <span className="text-on-surface-variant block text-[10px]">Capacidad bodega:</span>
+                      <strong className="text-on-surface">{selectedItem.data.storageCapacityTons} Ton</strong>
                     </div>
                     <div>
-                      <span className="text-slate-400 block text-[10px]">Stock actual:</span>
-                      <strong className="text-slate-800">{selectedItem.data.currentStockTons} Ton</strong>
+                      <span className="text-on-surface-variant block text-[10px]">Stock actual:</span>
+                      <strong className="text-on-surface">{selectedItem.data.currentStockTons} Ton</strong>
                     </div>
                     <div>
-                      <span className="text-slate-400 block text-[10px]">Cámara fría:</span>
-                      <strong className={selectedItem.data.refrigerationAvailable ? "text-emerald-700" : "text-slate-500"}>
+                      <span className="text-on-surface-variant block text-[10px]">Cámara fría:</span>
+                      <strong className={selectedItem.data.refrigerationAvailable ? "text-primary" : "text-on-surface-variant"}>
                         {selectedItem.data.refrigerationAvailable ? "Disponible" : "No"}
                       </strong>
                     </div>
                     <div>
-                      <span className="text-slate-400 block text-[10px]">Beneficiarios/día:</span>
-                      <strong className="text-slate-800">{selectedItem.data.beneficiariesServedDaily.toLocaleString()}</strong>
+                      <span className="text-on-surface-variant block text-[10px]">Beneficiarios/día:</span>
+                      <strong className="text-on-surface">{selectedItem.data.beneficiariesServedDaily.toLocaleString()}</strong>
                     </div>
                   </div>
 
                   <div className="text-xs space-y-1">
-                    <span className="font-semibold text-slate-700">Demanda prioritaria de alimentos:</span>
+                    <span className="font-semibold text-on-surface">Demanda prioritaria de alimentos:</span>
                     <div className="flex flex-wrap gap-1">
                       {selectedItem.data.urgentNeeds.map((n: string, i: number) => (
-                        <span key={i} className="text-[11px] bg-slate-100 text-slate-700 px-2 py-0.5 rounded font-medium">
+                        <span key={i} className="text-[11px] bg-surface-container-low text-on-surface-variant px-2 py-0.5 rounded font-medium">
                           {n}
                         </span>
                       ))}
@@ -536,7 +531,7 @@ export const MapView: React.FC<MapViewProps> = ({
                   <div className="pt-2 flex items-center gap-2">
                     <a
                       href={`tel:${selectedItem.data.phone}`}
-                      className="flex-1 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition"
+                      className="flex-1 py-2 bg-inverse-surface text-inverse-on-surface rounded-full text-xs font-semibold flex items-center justify-center gap-1.5 transition"
                     >
                       <Phone className="w-3.5 h-3.5" />
                       <span>{selectedItem.data.phone}</span>
@@ -548,20 +543,20 @@ export const MapView: React.FC<MapViewProps> = ({
               {selectedItem.type === "alerta" && (
                 <div className="space-y-3">
                   <div>
-                    <span className="text-[10px] font-bold text-rose-700 uppercase bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
-                      Boletín Oficial
+                    <span className="text-[10px] font-bold text-on-tertiary-container uppercase bg-tertiary-fixed px-2 py-0.5 rounded-full">
+                      Boletín oficial
                     </span>
-                    <h3 className="text-sm font-bold text-slate-900 mt-1">{selectedItem.data.title}</h3>
-                    <p className="text-xs text-slate-500">Región: {selectedItem.data.region}</p>
+                    <h3 className="text-sm font-bold text-on-surface mt-1">{selectedItem.data.title}</h3>
+                    <p className="text-xs text-on-surface-variant">Región: {selectedItem.data.region}</p>
                   </div>
 
-                  <p className="text-xs text-slate-600 bg-slate-50 p-3 rounded-xl leading-relaxed">
+                  <p className="text-xs text-on-surface-variant bg-surface-container-low p-3 rounded-xl leading-relaxed">
                     {selectedItem.data.forecastSummary}
                   </p>
 
                   <div className="space-y-1.5">
-                    <span className="text-xs font-bold text-slate-900">Medidas de Protección Civil:</span>
-                    <ul className="text-xs text-slate-600 space-y-1 list-disc list-inside">
+                    <span className="text-xs font-bold text-on-surface">Medidas de protección civil:</span>
+                    <ul className="text-xs text-on-surface-variant space-y-1 list-disc list-inside">
                       {selectedItem.data.protocolRecommendations.slice(0, 3).map((r: string, idx: number) => (
                         <li key={idx}>{r}</li>
                       ))}
@@ -573,38 +568,36 @@ export const MapView: React.FC<MapViewProps> = ({
               {selectedItem.type === "incidente" && (
                 <div className="space-y-3">
                   <div>
-                    <span className="text-[10px] font-bold text-amber-700 uppercase bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
-                      Incidente Ciudadano
+                    <span className="text-[10px] font-bold text-on-secondary-container uppercase bg-secondary-container px-2 py-0.5 rounded-full">
+                      Incidente ciudadano
                     </span>
-                    <h3 className="text-sm font-bold text-slate-900 mt-1">{selectedItem.data.title}</h3>
-                    <p className="text-xs text-slate-500">Reportó: {selectedItem.data.reportedBy} ({selectedItem.data.timestamp})</p>
+                    <h3 className="text-sm font-bold text-on-surface mt-1">{selectedItem.data.title}</h3>
+                    <p className="text-xs text-on-surface-variant">Reportó: {selectedItem.data.reportedBy} ({selectedItem.data.timestamp})</p>
                   </div>
 
-                  <p className="text-xs text-slate-700 bg-slate-50 p-3 rounded-xl">
-                    "{selectedItem.data.description}"
-                  </p>
+                  <p className="text-xs text-on-surface bg-surface-container-low p-3 rounded-xl">"{selectedItem.data.description}"</p>
 
                   <div className="flex items-center justify-between text-xs pt-1">
-                    <span className="text-slate-500">Estado: <strong className="text-amber-700">{selectedItem.data.status}</strong></span>
-                    <span className="font-bold text-emerald-700">▲ {selectedItem.data.votes} confirmaciones</span>
+                    <span className="text-on-surface-variant">Estado: <strong className="text-secondary">{selectedItem.data.status}</strong></span>
+                    <span className="font-bold text-primary">▲ {selectedItem.data.votes} confirmaciones</span>
                   </div>
                 </div>
               )}
             </div>
           ) : (
-            <div className="py-16 text-center text-slate-400 space-y-2">
-              <MapPin className="w-10 h-10 mx-auto text-slate-300" />
+            <div className="py-16 text-center text-outline space-y-2">
+              <MapPin className="w-10 h-10 mx-auto" />
               <p className="text-xs">Selecciona un marcador en el mapa para inspeccionar sus datos.</p>
             </div>
           )}
 
           {/* Persistent Quick Help Box */}
-          <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs flex items-center justify-between">
+          <div className="p-3 bg-surface-container-low rounded-xl border border-outline-variant text-xs flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Navigation className="w-4 h-4 text-emerald-600" />
-              <span className="text-slate-700 font-medium">GPS y Radares Sincronizados</span>
+              <Navigation className="w-4 h-4 text-primary" />
+              <span className="text-on-surface-variant font-medium">GPS y radares sincronizados</span>
             </div>
-            <span className="text-[10px] text-slate-400 font-mono">19.32°N, 97.92°W</span>
+            <span className="text-[10px] text-outline font-mono">4.9678°N, 73.9151°W</span>
           </div>
         </div>
       </div>
