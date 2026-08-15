@@ -1,0 +1,6 @@
+{
+  "name": "CLIVIA - Sistema Preventivo de Riesgos y Gestión de Excedentes",
+  "description": "Sistema integral de alerta temprana ante desastres naturales, gestión agroclimática y motor de optimización de excedentes agrícolas asistido por IA.",
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
